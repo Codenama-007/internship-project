@@ -1,0 +1,23 @@
+# Local development only. The password fallback is a documented default for a
+# throwaway database on your own machine - never use it anywhere else.
+# If a local Postgres already listens on 5432, stop it or change the host port below
+# (and update DATABASE_URL in server/.env to match).
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: brokerdesk
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d brokerdesk"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  pgdata:

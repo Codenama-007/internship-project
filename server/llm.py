@@ -1,10 +1,11 @@
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_ollama import ChatOllama
 
-load_dotenv()
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
 MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")

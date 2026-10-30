@@ -28,7 +28,7 @@ export default function LoginPage() {
       router.replace("/app");
       router.refresh();
     } catch {
-      setError("Cannot reach the server. Is the API running on port 8000?");
+      setError("Cannot reach the server. Is the API running?");
       setBusy(false);
     }
   }

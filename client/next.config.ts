@@ -1,9 +1,11 @@
 import type { NextConfig } from "next";
 
+// Single place the browser talks to: /api/* is rewritten to FastAPI, so no CORS.
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001";
+
 const nextConfig: NextConfig = {
-  // one origin for the browser: the API stays on FastAPI :8000, no CORS needed
   async rewrites() {
-    return [{ source: "/api/:path*", destination: "http://127.0.0.1:8000/api/:path*" }];
+    return [{ source: "/api/:path*", destination: `${API_URL}/api/:path*` }];
   },
   cacheComponents: true,
   partialPrefetching: true,

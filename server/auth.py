@@ -1,12 +1,13 @@
 import hmac
 import os
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import jwt
 from dotenv import load_dotenv
 from fastapi import Cookie, HTTPException, Response
 
-load_dotenv()
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 # shortcut: dev secret fallback + plaintext password in .env, for single-admin local demo;
 # replace with a hashed password + forced SECRET_KEY before any real deployment.

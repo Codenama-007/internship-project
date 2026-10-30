@@ -1,3 +1,17 @@
 {
-    "plugins" : ["@dietrichgebert/ponytail"]
+    "plugins": [
+      "@dietrichgebert/ponytail"
+    ],
+    "mcp": {
+      "servers": {
+        "gitmcp": {
+          "type": "remote",
+          "url": "https://gitmcp.io/Codenama-007/internship-project"
+        },
+        "context7": {
+          "type": "remote",
+          "url": "https://mcp.context7.com/mcp"
+        }
+      }
+    }
 }

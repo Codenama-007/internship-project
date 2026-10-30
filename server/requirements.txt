@@ -3,3 +3,10 @@ uvicorn[standard]
 pyjwt
 python-dotenv
 langchain-ollama
+sqlalchemy
+psycopg[binary]
+alembic
+langgraph
+langgraph-checkpoint-postgres
+python-multipart
+faster-whisper

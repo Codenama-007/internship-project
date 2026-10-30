@@ -1,6 +1,7 @@
+from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class LoginBody(BaseModel):
@@ -26,3 +27,31 @@ class ChatBody(BaseModel):
 
 class ChatOut(BaseModel):
     reply: str
+    href: str | None = None
+
+
+class IngestOut(BaseModel):
+    job_id: str
+    summary: str
+    chats_read: int
+    candidates: int
+    customers_saved: int
+    phone_missing: int
+    batches_retried: int
+    batches_skipped: int
+
+
+class CustomerOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str | None
+    phone: str | None
+    query_text: str
+    locality: str | None
+    bhk: str | None
+    budget: int | None
+    source: str
+    source_chat: str
+    enquiry_date: datetime | None
+    created_at: datetime

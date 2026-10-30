@@ -15,6 +15,7 @@ server/venv/
 server/__pycache__/
 server/*.py[cod]
 server/.pytest_cache/
+server/fixtures/
 
 # --- secrets: never commit ---
 server/.env
