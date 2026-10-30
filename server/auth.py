@@ -15,6 +15,9 @@ SECRET = os.getenv("SECRET_KEY", "dev-secret-change-me-only-for-local-demos-0123
 PASSWORD = os.getenv("BROKER_PASSWORD", "broker123")
 COOKIE = "bd_session"
 MAX_AGE = 7 * 24 * 3600
+# Vercel client -> Render API is cross-site, so production needs SameSite=None; Secure.
+# Local dev (localhost:3000 -> localhost:8001) is same-site, so lax works there.
+SECURE = os.getenv("COOKIE_SECURE", "0") == "1"
 
 
 def check_password(candidate: str) -> bool:
@@ -40,7 +43,13 @@ def is_valid(token: str | None) -> bool:
 
 def set_session(response: Response) -> None:
     response.set_cookie(
-        COOKIE, issue_token(), httponly=True, samesite="lax", max_age=MAX_AGE, path="/"
+        COOKIE,
+        issue_token(),
+        httponly=True,
+        samesite="none" if SECURE else "lax",
+        secure=SECURE,
+        max_age=MAX_AGE,
+        path="/",
     )
 
 

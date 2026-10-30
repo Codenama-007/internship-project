@@ -1,3 +1,4 @@
+import os
 import tempfile
 import zipfile
 from contextlib import asynccontextmanager
@@ -6,9 +7,9 @@ from pathlib import Path
 from uuid import uuid4
 
 import httpx
-import ollama
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Request, Response, UploadFile
 from fastapi.concurrency import run_in_threadpool
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import select, text
 from sqlalchemy.exc import OperationalError
@@ -17,7 +18,8 @@ from auth import check_password, clear_session, current_user, set_session
 from audio import MAX_AUDIO, transcribe
 from db import BROKER_ID, Customer, Session, engine
 from graph import ingestion_graph, thread_id
-from llm import MODEL, OLLAMA_URL, reply
+from groq import APIError
+from llm import MODEL, reply
 from nodes import save_typed
 from schemas import (
     ChatBody,
@@ -58,18 +60,11 @@ def db_ok(verbose: bool = False) -> bool:
         return False
     
 def llm_ok(verbose: bool = False) -> bool:
-    """Ollama up and the model we ask for actually pulled."""
-    try:
-        tags = httpx.get(f"{OLLAMA_URL}/api/tags", timeout=2).json()
-    except Exception:
-        if verbose:
-            print(f"[ai] Ollama not running at {OLLAMA_URL} - run: ollama serve", flush=True)
-        return False
-    names = [m.get("name", "") for m in tags.get("models", [])]
-    if MODEL in names or f"{MODEL}:latest" in names:
+    """Groq only needs a key: no local server to start."""
+    if os.getenv("GROQ_API_KEY"):
         return True
     if verbose:
-        print(f"[ai] Ollama is up but model {MODEL} is missing - run: ollama pull {MODEL}", flush=True)
+        print("[ai] GROQ_API_KEY is not set - chat, ingest and voice notes will fail", flush=True)
     return False
 
 
@@ -78,11 +73,20 @@ async def lifespan(app: FastAPI):
     if db_ok(verbose=True):
         print("[db] Postgres reachable", flush=True)
     if llm_ok(verbose=True):
-        print(f"[ai] Ollama ready, model {MODEL}", flush=True)
+        print(f"[ai] Groq ready, model {MODEL}", flush=True)
     yield
 
 
 app = FastAPI(title="BrokerDesk", lifespan=lifespan)
+
+# The browser calls the API directly, so the Vercel origin must be allowed with cookies.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[os.getenv("CLIENT_ORIGIN", "http://localhost:3000")],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 JOB_DIR = Path(tempfile.gettempdir()) / "brokerdesk"
 
@@ -147,8 +151,8 @@ async def chat(body: ChatBody, user: str = Depends(current_user)) -> ChatOut:
     # a lead typed by the broker becomes a customer row; questions fall through to chat
     try:
         typed = await run_in_threadpool(save_typed, messages[-1]["content"])
-    except (httpx.ConnectError, httpx.TimeoutException):
-        return ChatOut(reply="AI model se connect nahi ho paaya. Ollama chalu hai? (ollama serve)")
+    except (RuntimeError, APIError, httpx.HTTPError):
+        return ChatOut(reply="AI model se connect nahi ho paaya. GROQ_API_KEY check karein.")
     if typed:
         return ChatOut(reply=typed_reply(typed), href="/app/customers")
     return ChatOut(reply=await reply(messages))
@@ -205,17 +209,14 @@ def upload_zip(
             )
     except (ValueError, zipfile.BadZipFile) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except (httpx.ConnectError, httpx.TimeoutException) as exc:
-        # ZIP stays on disk so the same thread_id can resume once Ollama is back
+    except RuntimeError as exc:
+        # ZIP stays on disk so the same thread_id can resume once the AI is reachable
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except (APIError, httpx.HTTPError) as exc:
+        print(f"[ingest] ai {type(exc).__name__}", flush=True)
         raise HTTPException(
             status_code=503,
-            detail="AI model se connect nahi ho paaya. Ollama chalu hai? (ollama serve)",
-        ) from exc
-    except ollama.ResponseError as exc:
-        # for example: model not downloaded
-        raise HTTPException(
-            status_code=503,
-            detail="AI model available nahi hai. Run: ollama pull <model name>",
+            detail="AI model se connect nahi ho paaya. GROQ_API_KEY check karein.",
         ) from exc
 
     zip_path.unlink(missing_ok=True)

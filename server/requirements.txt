@@ -2,11 +2,10 @@ fastapi
 uvicorn[standard]
 pyjwt
 python-dotenv
-langchain-ollama
+langchain-groq
 sqlalchemy
 psycopg[binary]
 alembic
 langgraph
 langgraph-checkpoint-postgres
 python-multipart
-faster-whisper

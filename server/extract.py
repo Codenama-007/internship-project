@@ -1,19 +1,12 @@
 """WhatsApp candidates -> rental leads. LLM classifies and extracts, Python decides numbers."""
 
 import json
-import os
 import re
 
-from dotenv import load_dotenv
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_ollama import ChatOllama
 
+from llm import chat
 from whatsapp import phone_of
-
-load_dotenv()
-
-OLLAMA_URL = os.getenv("OLLAMA_URL", "http://127.0.0.1:11434")
-MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
 
 PROMPT = """You classify ONE WhatsApp contact of a Mumbai rental broker.
 
@@ -38,20 +31,13 @@ Rules for the fields when is_lead is true:
 
 Reply with the JSON object only."""
 
-# temperature 0 + format="json": the 3B model then returns parseable JSON instead of prose
-llm = ChatOllama(
-    model=MODEL,
-    base_url=OLLAMA_URL,
-    temperature=0,
-    keep_alive="30m",
-    format="json",
-    num_predict=300,
-)
-
-
 def _ask(payload: dict) -> dict | None:
     """One candidate in, one JSON object out. None means the model broke the contract."""
-    raw = llm.invoke(
+    raw = chat(
+        temperature=0,
+        max_tokens=300,
+        model_kwargs={"response_format": {"type": "json_object"}},
+    ).invoke(
         [SystemMessage(PROMPT), HumanMessage(json.dumps(payload, ensure_ascii=False))]
     ).text
     try:

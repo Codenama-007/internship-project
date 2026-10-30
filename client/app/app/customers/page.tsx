@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { api } from "@/lib/api";
+
 type Customer = {
   id: number;
   name: string | null;
@@ -28,7 +30,7 @@ export default function Customers() {
     if (search.trim()) params.set("name", search.trim());
     if (locality.trim()) params.set("locality", locality.trim());
     try {
-      const res = await fetch(`/api/customers?${params}`);
+      const res = await api(`/api/customers?${params}`);
       if (!res.ok) {
         setError(res.status === 401 ? "Session expired — sign in again." : `Failed (${res.status}).`);
         return;
@@ -36,7 +38,7 @@ export default function Customers() {
       setError("");
       setRows((await res.json()) as Customer[]);
     } catch {
-      setError("Could not reach the API on port 8000.");
+      setError("Could not reach the API. Is it running?");
     } finally {
       setLoading(false);
     }

@@ -198,7 +198,7 @@ def save_typed(text: str) -> dict | None:
 
 
 def audio_tool(state: IngestState) -> dict:
-    """Step 5 replaces this with faster-whisper. Until then the files are held for review."""
+    """ZIP voice notes are not wired yet; chat voice notes go through /api/voice."""
     review = list(state.get("needs_review", []))
     for item in state.get("files", []):
         if item["type"] == "audio":

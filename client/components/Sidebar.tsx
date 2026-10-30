@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
+import { api } from "@/lib/api";
+
 // shortcut: labels are inert until Phase 2 routes exist — ceiling: no active state or
 // navigation. Upgrade: swap each <span> for <Link href="/app/properties"> once built.
 const TABS = ["Properties", "People", "Calendar", "Brokerage"];
@@ -12,7 +14,7 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   async function logout() {
-    await fetch("/api/logout", { method: "POST" }).catch(() => {});
+    await api("/api/logout", { method: "POST" }).catch(() => {});
     router.replace("/login");
     router.refresh();
   }

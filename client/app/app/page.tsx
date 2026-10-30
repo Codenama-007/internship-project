@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { api } from "@/lib/api";
+
 type Msg = { from: "me" | "bot"; text: string; href?: string };
 
 const GREETING: Msg = {
@@ -20,6 +22,7 @@ export default function Chat() {
   const [pending, setPending] = useState(false);
   const [file, setFile] = useState<File | null>(null);
   const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -30,6 +33,11 @@ export default function Chat() {
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
   }, [msgs]);
+
+  useEffect(() => {
+    // auth lives on the API cookie now, so the first request is the gate
+    api("/api/me").catch(() => {});
+  }, []);
 
   useEffect(() => () => {
     if (timerRef.current) clearInterval(timerRef.current);
@@ -49,7 +57,35 @@ export default function Chat() {
       add({ from: "bot", text: "Sirf .zip ya voice note (.opus/.ogg/.m4a/.mp3/.wav) bhej sakte ho." });
       return;
     }
+    if (AUDIO.test(selected.name)) {
+      void transcribe(selected);
+      return;
+    }
     setFile(selected);
+  }
+
+  async function transcribe(clip: File) {
+    const body = new FormData();
+    body.append("file", clip);
+    setTranscribing(true);
+    try {
+      const res = await api("/api/voice", { method: "POST", body });
+      const data = (await res.json().catch(() => ({}))) as { text?: string; detail?: string };
+      if (!res.ok) {
+        add({ from: "bot", text: data.detail ?? `Voice note fail hua (${res.status}).` });
+        return;
+      }
+      if (!data.text) {
+        add({ from: "bot", text: "Voice note me kuch samajh nahi aaya. Phir se bhejo." });
+        return;
+      }
+      setValue((current) => (current ? `${current} ${data.text}` : (data.text as string)));
+      inputRef.current?.focus();
+    } catch {
+      add({ from: "bot", text: "Server se connect nahi ho paaya. API chal rahi hai?" });
+    } finally {
+      setTranscribing(false);
+    }
   }
 
   async function startRecording() {
@@ -63,7 +99,7 @@ export default function Chat() {
       recorder.onstop = () => {
         stream.getTracks().forEach((track) => track.stop());
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType || "audio/webm" });
-        setFile(new File([blob], `voice-${Date.now()}.webm`, { type: blob.type }));
+        void transcribe(new File([blob], `voice-${Date.now()}.webm`, { type: blob.type }));
       };
       recorder.start();
       recorderRef.current = recorder;
@@ -94,7 +130,7 @@ export default function Chat() {
     );
     let res: Response;
     try {
-      res = await fetch("/api/ingest/zip", { method: "POST", body });
+      res = await api("/api/ingest/zip", { method: "POST", body });
     } catch {
       add({ from: "bot", text: "Upload fail hua: server se connect nahi ho paaya." });
       return;
@@ -119,7 +155,7 @@ export default function Chat() {
 
   async function send(event: React.FormEvent) {
     event.preventDefault();
-    if (pending || recording) return;
+    if (pending || recording || transcribing) return;
     const text = value.trim();
     if (!text && !file) return;
 
@@ -132,17 +168,12 @@ export default function Chat() {
     setPending(true);
 
     try {
-      if (attached && ZIP.test(attached.name)) {
+      if (attached) {
         add({ from: "bot", text: "ZIP mila. Padh raha hoon — 2-3 minute lag sakte hain…" });
         await uploadZip(attached, text);
-      } else if (attached) {
-        add({
-          from: "bot",
-          text: "Voice note mila, transcribe karna baaki hai (step 5 me aayega).",
-        });
       } else {
         const history = [...msgs, { from: "me" as const, text }].slice(-10);
-        const res = await fetch("/api/chat", {
+        const res = await api("/api/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -221,6 +252,12 @@ export default function Chat() {
           </div>
         ) : null}
 
+        {transcribing ? (
+          <div className="mb-2 rounded-lg bg-neutral-100 px-3 py-2 text-sm text-neutral-600">
+            🎧 Voice note sun raha hoon…
+          </div>
+        ) : null}
+
         {recording ? (
           <div className="mb-2 flex items-center gap-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
             <span className="h-2 w-2 animate-pulse rounded-full bg-red-600" />
@@ -239,7 +276,7 @@ export default function Chat() {
           <button
             type="button"
             onClick={() => inputRef.current?.click()}
-            disabled={pending || recording}
+            disabled={pending || recording || transcribing}
             className="shrink-0 rounded-full border border-neutral-300 px-3 py-2.5 text-base leading-none disabled:opacity-50"
             aria-label="Attach ZIP"
             title="Attach WhatsApp export (.zip)"
@@ -260,7 +297,7 @@ export default function Chat() {
           <button
             type="button"
             onClick={recording ? stopRecording : startRecording}
-            disabled={pending}
+            disabled={pending || transcribing}
             className={`shrink-0 rounded-full border px-3 py-2.5 text-base leading-none disabled:opacity-50 ${
               recording ? "border-red-400 bg-red-50" : "border-neutral-300"
             }`}
@@ -280,7 +317,7 @@ export default function Chat() {
           />
           <button
             type="submit"
-            disabled={pending || recording || (!value.trim() && !file)}
+            disabled={pending || recording || transcribing || (!value.trim() && !file)}
             className="shrink-0 rounded-full bg-[#075E54] px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
           >
             Send

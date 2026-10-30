@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: brokerdesk-api
+    runtime: docker
+    plan: free
+    rootDir: server
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: GROQ_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: BROKER_PASSWORD
+        sync: false
+      - key: BROKER_NAME
+        value: Affan,Affan Properties
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: COOKIE_SECURE
+        value: "1"

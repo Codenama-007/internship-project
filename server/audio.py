@@ -1,35 +1,42 @@
-"""Voice notes -> text. One Whisper model per process, CPU int8."""
+"""Voice notes -> text via Groq's hosted Whisper, so the server needs no model or ffmpeg."""
 
-import io
 import os
 from pathlib import Path
 
+import httpx
 from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
-MODEL_SIZE = os.getenv("WHISPER_MODEL", "small")
+MODEL = os.getenv("GROQ_STT_MODEL", "whisper-large-v3-turbo")
+URL = "https://api.groq.com/openai/v1/audio/transcriptions"
 MAX_AUDIO = 25 * 1024 * 1024
 MAX_MINUTES = 10
 
-_model = None
 
-
-def model():
-    global _model
-    if _model is None:
-        from faster_whisper import WhisperModel
-
-        _model = WhisperModel(MODEL_SIZE, device="cpu", compute_type="int8")
-    return _model
-
-
-def transcribe(data: bytes) -> dict:
+def transcribe(data: bytes, filename: str = "voice.webm") -> dict:
     """Return {text, language, duration}. Raises ValueError for too big or too long."""
     if len(data) > MAX_AUDIO:
         raise ValueError("Voice note 25 MB se badi hai")
-    segments, info = model().transcribe(io.BytesIO(data), vad_filter=True)
-    if info.duration > MAX_MINUTES * 60:
+    key = os.getenv("GROQ_API_KEY")
+    if not key:
+        raise RuntimeError("GROQ_API_KEY is not set")
+    response = httpx.post(
+        URL,
+        headers={"Authorization": f"Bearer {key}"},
+        files={"file": (filename, data)},
+        data={"model": MODEL, "response_format": "verbose_json"},
+        timeout=120,
+    )
+    if response.status_code >= 400:
+        print(f"[voice] groq {response.status_code}", flush=True)
+        raise RuntimeError("transcription failed")
+    body = response.json()
+    duration = float(body.get("duration") or 0)
+    if duration > MAX_MINUTES * 60:
         raise ValueError("Voice note 10 minute se lambi hai")
-    text = " ".join(segment.text.strip() for segment in segments).strip()
-    return {"text": text, "language": info.language, "duration": round(info.duration, 1)}
+    return {
+        "text": (body.get("text") or "").strip(),
+        "language": body.get("language"),
+        "duration": round(duration, 1),
+    }
