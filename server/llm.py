@@ -7,9 +7,12 @@ from dotenv import load_dotenv
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_groq import ChatGroq
 
-load_dotenv(Path(__file__).resolve().parent / ".env")
+# override=True: the values in server/.env win over any stale value already set in
+# Windows. For production, set real environment variables on the host and this line
+# can go back to the default (override=False).
+load_dotenv(Path(__file__).resolve().parent / ".env", override=True)
 
-MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+MODEL = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 
 
 def chat(**kwargs) -> ChatGroq:
@@ -17,6 +20,8 @@ def chat(**kwargs) -> ChatGroq:
     key = os.getenv("GROQ_API_KEY")
     if not key:
         raise RuntimeError("GROQ_API_KEY is not set. Add it to server/.env (see .env.example).")
+    # timeout 60s and 2 retries: a rate-limited call fails in about a minute instead of
+    # hanging for minutes, so the upload does not look frozen.
     return ChatGroq(model=MODEL, api_key=key, timeout=60, max_retries=2, **kwargs)
 
 
@@ -42,7 +47,11 @@ async def reply(messages: list[dict]) -> str:
     ]
     try:
         return (await chat(temperature=0.2).ainvoke(history)).text
-    except Exception:
-        # shortcut: whole answer or nothing — no token streaming. Upgrade: astream +
-        # StreamingResponse if time-to-first-token ever matters.
-        return "AI se connect nahi ho paaya. GROQ_API_KEY check karein."
+    except RuntimeError:
+        # missing GROQ_API_KEY (raised by chat())
+        print("[ai] GROQ_API_KEY is not set", flush=True)
+        return "AI key set nahi hai. server/.env me GROQ_API_KEY add karein."
+    except Exception as exc:
+        # type only: never log message text or phone numbers
+        print(f"[ai] chat failed: {type(exc).__name__}", flush=True)
+        return "AI se connect nahi ho paaya. Server log dekhein."

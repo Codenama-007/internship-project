@@ -35,7 +35,9 @@ def _ask(payload: dict) -> dict | None:
     """One candidate in, one JSON object out. None means the model broke the contract."""
     raw = chat(
         temperature=0,
-        max_tokens=300,
+        # gpt-oss spends tokens on reasoning; 300 left no room for the JSON and Groq
+        # rejected every call with json_validate_failed.
+        max_tokens=1500,
         model_kwargs={"response_format": {"type": "json_object"}},
     ).invoke(
         [SystemMessage(PROMPT), HumanMessage(json.dumps(payload, ensure_ascii=False))]

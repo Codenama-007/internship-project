@@ -26,6 +26,9 @@ from nodes import unpack_zip  # noqa: E402
 ZIP = HERE / "fixtures" / "whatsapp_fake_export.zip"
 STAGE = Path(tempfile.gettempdir()) / "brokerdesk-tests"
 
+# fresh_db() drops every table: never let this script point at a real database
+assert (engine.url.database or "").endswith("_test"), f"refusing to touch {engine.url.database}"
+
 # name -> (phone, locality, bhk, budget) from EXPECTED_LEADS.md
 EXPECTED = {
     "Rohit Mehta": ("919820011223", "Andheri West", "2", 45000),

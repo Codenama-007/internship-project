@@ -40,7 +40,7 @@ server needs no local model.
 
 1. Get a key at https://console.groq.com/keys
 2. `GROQ_API_KEY=gsk_...` in `server/.env` (model: `GROQ_MODEL`, default
-   `llama-3.3-70b-versatile`; voice: `GROQ_STT_MODEL`, default `whisper-large-v3-turbo`)
+   `openai/gpt-oss-120b`; voice: `GROQ_STT_MODEL`, default `whisper-large-v3-turbo`)
 
 Offline fallback: the Ollama block is commented out at the bottom of `server/llm.py`.
 

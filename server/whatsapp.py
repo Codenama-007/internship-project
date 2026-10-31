@@ -6,7 +6,7 @@ import os
 import re
 import zipfile
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -15,6 +15,9 @@ load_dotenv(Path(__file__).resolve().parent / ".env")
 
 MAX_ZIP = 100 * 1024 * 1024
 MAX_UNPACKED = 200 * 1024 * 1024
+# WhatsApp export timestamps are IST wall-clock; keep them aware or Postgres reads
+# them as UTC and every enquiry_date drifts by 5h30m.
+IST = timezone(timedelta(hours=5, minutes=30))
 
 BROKER_ALIASES = [
     a.strip().lower() for a in os.getenv("BROKER_NAME", "Affan").split(",") if a.strip()
@@ -84,7 +87,7 @@ def _parse_when(date_s: str, time_s: str, ampm: str | None) -> datetime | None:
         if ampm.lower() == "p":
             hh += 12
     try:
-        return datetime(year, month, day, hh, mm, ss)
+        return datetime(year, month, day, hh, mm, ss, tzinfo=IST)
     except ValueError:
         return None
 

@@ -210,7 +210,6 @@ def upload_zip(
     except (ValueError, zipfile.BadZipFile) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except RuntimeError as exc:
-        # ZIP stays on disk so the same thread_id can resume once the AI is reachable
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except (APIError, httpx.HTTPError) as exc:
         print(f"[ingest] ai {type(exc).__name__}", flush=True)
@@ -218,8 +217,13 @@ def upload_zip(
             status_code=503,
             detail="AI model se connect nahi ho paaya. GROQ_API_KEY check karein.",
         ) from exc
+    finally:
+        # no resume endpoint exists, so every failed job used to leak the ZIP here
+        zip_path.unlink(missing_ok=True)
 
-    zip_path.unlink(missing_ok=True)
+    if not any(item["type"] != "ignored" for item in state.get("files", [])):
+        raise HTTPException(status_code=400, detail="ZIP me koi .txt ya voice note nahi mila")
+
     counters = state.get("counters", {})
     return IngestOut(
         job_id=job_id,
