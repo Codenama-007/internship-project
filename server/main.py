@@ -83,7 +83,7 @@ app = FastAPI(title="BrokerDesk", lifespan=lifespan)
 # The browser calls the API directly, so the Vercel origin must be allowed with cookies.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[os.getenv("CLIENT_ORIGIN", "http://localhost:3000" , "https://internship-project-ten-hazel.vercel.app/")],
+    allow_origins=["https://internship-project-ten-hazel.vercel.app/"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
