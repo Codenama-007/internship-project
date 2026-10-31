@@ -52,7 +52,7 @@ Offline fallback: the Ollama block is commented out at the bottom of `server/llm
   `SECRET_KEY`, `BROKER_PASSWORD`, `CLIENT_ORIGIN` (the Vercel URL, no trailing slash)
   and `COOKIE_SECURE=1`.
 - **Client**: Vercel project with root directory `client` and
-  `NEXT_PUBLIC_API_URL=https://<your-api>.onrender.com`.
+  `NEXT_PUBLIC_LIVE_URL=https://<your-api>.onrender.com`.
 
 The browser talks to the API directly because a ZIP ingest runs for minutes, longer
 than a Vercel function lives. That makes the cookie cross-site, hence `COOKIE_SECURE=1`
