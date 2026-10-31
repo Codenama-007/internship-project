@@ -4,7 +4,7 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { api } from "@/lib/api";
+import { api, saveToken } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -27,6 +27,13 @@ export default function LoginPage() {
         setBusy(false);
         return;
       }
+      const data = (await res.json()) as { token?: string };
+      if (!data.token) {
+        setError("API is running an old build. Restart or redeploy the backend.");
+        setBusy(false);
+        return;
+      }
+      saveToken(data.token);
       router.replace("/app");
       router.refresh();
     } catch {

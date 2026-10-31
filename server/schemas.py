@@ -12,6 +12,12 @@ class OkOut(BaseModel):
     ok: bool = True
 
 
+class LoginOut(OkOut):
+    # body token: the deployed client is on vercel.app and the API on onrender.com,
+    # so a browser will not send the cross-site cookie on the next request.
+    token: str
+
+
 class MeOut(BaseModel):
     user: str
 

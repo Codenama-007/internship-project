@@ -5,7 +5,7 @@ from pathlib import Path
 
 import jwt
 from dotenv import load_dotenv
-from fastapi import Cookie, HTTPException, Response
+from fastapi import Cookie, Header, HTTPException, Response
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
@@ -57,8 +57,18 @@ def clear_session(response: Response) -> None:
     response.delete_cookie(COOKIE, path="/")
 
 
-def current_user(bd_session: str | None = Cookie(default=None)) -> str:
-    """Depends() guard: every admin route re-verifies the JWT, not just the proxy."""
+def current_user(
+    bd_session: str | None = Cookie(default=None),
+    authorization: str | None = Header(default=None),
+) -> str:
+    """Depends() guard: every admin route re-verifies the JWT, not just the proxy.
+
+    Accepts the Vercel -> Render cross-site case via Authorization: Bearer, where
+    browsers drop the cookie (third-party cookies / SameSite); the cookie still
+    works for same-site dev and curl.
+    """
+    if authorization and authorization.startswith("Bearer "):
+        bd_session = authorization[7:]
     if not is_valid(bd_session):
         raise HTTPException(status_code=401, detail="Not logged in")
     return "broker"

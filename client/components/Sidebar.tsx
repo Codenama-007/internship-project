@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
-import { api } from "@/lib/api";
+import { api, clearToken } from "@/lib/api";
 
 // shortcut: labels are inert until Phase 2 routes exist — ceiling: no active state or
 // navigation. Upgrade: swap each <span> for <Link href="/app/properties"> once built.
@@ -15,6 +15,7 @@ export default function Sidebar() {
 
   async function logout() {
     await api("/api/logout", { method: "POST" }).catch(() => {});
+    clearToken();
     router.replace("/login");
     router.refresh();
   }

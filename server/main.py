@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import select, text
 from sqlalchemy.exc import OperationalError
 
-from auth import check_password, clear_session, current_user, set_session
+from auth import check_password, clear_session, current_user, issue_token, set_session
 from audio import MAX_AUDIO, transcribe
 from db import BROKER_ID, Customer, Session, engine
 from graph import ingestion_graph, thread_id
@@ -27,6 +27,7 @@ from schemas import (
     CustomerOut,
     IngestOut,
     LoginBody,
+    LoginOut,
     MeOut,
     OkOut,
 )
@@ -109,11 +110,12 @@ def api_health() -> dict:
 
 
 @app.post("/api/login")
-def login(body: LoginBody, response: Response) -> OkOut:
+def login(body: LoginBody, response: Response) -> LoginOut:
     if not check_password(body.password):
         raise HTTPException(status_code=401, detail="Wrong password")
     set_session(response)
-    return OkOut()
+    # the client stores this and sends it as Authorization: Bearer
+    return LoginOut(token=issue_token())
 
 
 @app.get("/api/me")
